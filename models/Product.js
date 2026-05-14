@@ -166,11 +166,12 @@ productSchema.methods.getStockStatus = function() {
 // Method to get gender icon/display
 productSchema.methods.getGenderIcon = function() {
   const icons = {
-    'Men': '👨',
-    'Women': '👩',
-    'Unisex': '👥'
+    'Men': '♂',
+    'Women': '♀',
+    'Unisex': '⚥'
   };
-  return icons[this.gender] || '👥';
+
+  return icons[this.gender] || '⚥';
 };
 
 module.exports = mongoose.model('Product', productSchema);
