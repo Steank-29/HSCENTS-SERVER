@@ -37,7 +37,7 @@ const sanitizeUser = (user) => {
     isVerified: user.isVerified,
     lastLogin: user.lastLogin,
     createdAt: user.createdAt,
-    role: user.role || 'user'
+    role: user.role || 'admin'
   };
 };
 
@@ -103,7 +103,7 @@ exports.register = async (req, res) => {
       dateOfBirth,
       profileImage: profileImageUrl,
       isVerified: false,
-      role: 'user'
+      role: 'admin'
     });
 
     logger.info('User registered successfully', { userId: user._id, email });
@@ -710,14 +710,42 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-// @desc    Delete user (Admin only)
+// @desc    Get all admin users (Super Admin only)
+// @route   GET /api/auth/admins
+// @access  Private/SuperAdmin
+exports.getAdminUsers = async (req, res) => {
+  try {
+    logger.info('Fetching admin users', { requestedBy: req.user.id });
+
+    // Get users with role 'admin' only (not super_admin)
+    const admins = await User.find({ role: 'admin' }).select('-password').sort({ createdAt: -1 });
+
+    logger.info(`Retrieved ${admins.length} admin users`);
+
+    res.status(200).json({
+      success: true,
+      count: admins.length,
+      admins: admins.map(sanitizeUser)
+    });
+  } catch (error) {
+    logger.error('Get admin users error', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching admin users',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// @desc    Delete user (Super Admin only - can delete admins)
 // @route   DELETE /api/auth/users/:id
-// @access  Private/Admin
+// @access  Private/SuperAdmin
 exports.deleteUser = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const userToDelete = await User.findById(req.params.id);
+    const currentUser = await User.findById(req.user.id);
 
-    if (!user) {
+    if (!userToDelete) {
       logger.warn('User not found for deletion', { userId: req.params.id });
       return res.status(404).json({
         success: false,
@@ -725,21 +753,48 @@ exports.deleteUser = async (req, res) => {
       });
     }
 
+    // Check if trying to delete own account
+    if (userToDelete._id.toString() === currentUser._id.toString()) {
+      logger.warn('User attempted to delete own account', { userId: req.params.id });
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot delete your own account'
+      });
+    }
+
+    // Check permissions: Only super_admin can delete admins or other super_admins
+    if (userToDelete.role === 'admin' || userToDelete.role === 'super_admin') {
+      if (currentUser.role !== 'super_admin') {
+        logger.warn('Non-super admin attempted to delete admin', { 
+          currentUser: currentUser.role, 
+          targetUser: userToDelete.role 
+        });
+        return res.status(403).json({
+          success: false,
+          message: 'Only Super Admin can delete admin accounts'
+        });
+      }
+    }
+
     // Delete user's profile image from Cloudinary if exists
-    if (user.profileImage) {
-      const publicId = user.profileImage.split('/').slice(-2).join('/').split('.')[0];
+    if (userToDelete.profileImage) {
+      const publicId = userToDelete.profileImage.split('/').slice(-2).join('/').split('.')[0];
       await cloudinary.uploader.destroy(publicId).catch(err => {
         logger.error('Failed to delete image from Cloudinary', err);
       });
     }
 
-    await user.deleteOne();
+    await userToDelete.deleteOne();
 
-    logger.info('User deleted successfully', { userId: req.params.id });
+    logger.info('User deleted successfully', { 
+      userId: req.params.id, 
+      deletedBy: currentUser.id,
+      deletedUserRole: userToDelete.role
+    });
 
     res.status(200).json({
       success: true,
-      message: 'User deleted successfully'
+      message: `User ${userToDelete.name} has been deleted successfully`
     });
   } catch (error) {
     logger.error('Delete user error', error);

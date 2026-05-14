@@ -113,27 +113,30 @@ if (process.env.NODE_ENV === 'development') {
 
 // Rate limiting with different limits for different endpoints
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  message: 'Too many requests from this IP, please try again later.',
+  windowMs: 60 * 1000, // 1 minute (changed from 1 hour)
+  max: 100, // 100 requests per minute (changed from 5)
+  message: 'Too many requests, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'GET' // Skip rate limiting for GET requests (viewing messages/stats)
 });
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20,
-  message: 'Too many authentication attempts, please try again later.',
+  windowMs: 60 * 1000, // 1 minute (changed from 1 hour)
+  max: 100, // 100 requests per minute (changed from 5)
+  message: 'Too many requests, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'GET' // Skip rate limiting for GET requests (viewing messages/stats)
 });
 
 const contactLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5,
-  message: 'Too many contact form submissions, please try again later.',
+  windowMs: 60 * 1000, // 1 minute (changed from 1 hour)
+  max: 100, // 100 requests per minute (changed from 5)
+  message: 'Too many requests, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'GET' // Skip rate limiting for GET requests (viewing messages/stats)
 });
 
 // Apply rate limiting to specific routes
