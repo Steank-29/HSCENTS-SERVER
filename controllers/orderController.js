@@ -1,5 +1,5 @@
 const Order = require('../models/Order');
-const nodemailer = require('nodemailer');
+const sendEmail = require('../utils/sendEmail'); // Keep using your original sendEmail
 
 const logger = {
   info: (message, data = null) => {
@@ -10,38 +10,7 @@ const logger = {
   }
 };
 
-// Email transporter setup
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: process.env.SMTP_PORT || 587,
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER || 'hello@hamdiscents.com',
-      pass: process.env.SMTP_PASS
-    }
-  });
-};
-
-// Send email function with retry
-const sendEmail = async ({ to, subject, html, from = '"Hamdi Scents" <hello@hamdiscents.com>' }) => {
-  const transporter = createTransporter();
-  const maxRetries = 3;
-  
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      await transporter.sendMail({ from, to, subject, html });
-      logger.info(`Email sent successfully to ${to}`);
-      return true;
-    } catch (error) {
-      logger.error(`Email attempt ${i + 1} failed for ${to}`, error.message);
-      if (i === maxRetries - 1) throw error;
-      await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
-    }
-  }
-};
-
-// Professional HTML Templates for Hamdi Scents
+// Professional HTML Templates for Hamdi Scents (keep these as is)
 const getCustomerOrderEmailHTML = (order, customer, totalAmount) => `
   <!DOCTYPE html>
   <html>
@@ -102,7 +71,7 @@ const getCustomerOrderEmailHTML = (order, customer, totalAmount) => `
                 </tr>
               `).join('')}
             </tbody>
-          </table>
+           licensierad
           
           <div class="total-row">
             <strong>Total Amount:</strong> 
@@ -220,8 +189,8 @@ const getAdminOrderEmailHTML = (order, customer, totalAmount) => `
         </div>
         
         <div class="action-buttons">
-          <a href="${process.env.ADMIN_URL || 'http://localhost:3000'}/admin/orders/${order._id}" class="btn btn-primary">📦 View & Process Order</a>
-          <a href="${process.env.ADMIN_URL || 'http://localhost:3000'}/admin/orders" class="btn btn-secondary">📋 View All Orders</a>
+          <a href="${process.env.CLIENT_URL || 'http://localhost:5050'}/admin/orders/${order._id}" class="btn btn-primary">📦 View & Process Order</a>
+          <a href="${process.env.CLIENT_URL || 'http://localhost:5050'}/admin/orders" class="btn btn-secondary">📋 View All Orders</a>
         </div>
         
         <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-top: 20px;">
@@ -239,71 +208,6 @@ const getAdminOrderEmailHTML = (order, customer, totalAmount) => `
   </body>
   </html>
 `;
-
-const getStatusUpdateEmailHTML = (order, status, customer) => {
-  const statusMessages = {
-    processing: 'Your order is now being prepared',
-    shipped: 'Your order has been shipped!',
-    delivered: 'Your order has been delivered',
-    cancelled: 'Order status update'
-  };
-  
-  const statusColors = {
-    processing: '#3498db',
-    shipped: '#f39c12',
-    delivered: '#27ae60',
-    cancelled: '#e74c3c'
-  };
-  
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Order Update - Hamdi Scents</title>
-      <style>
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
-        .container { max-width: 550px; margin: 20px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #1a2a3a 0%, #2c3e50 100%); padding: 24px; text-align: center; color: white; }
-        .logo { font-size: 24px; font-weight: bold; color: #F6D673; margin-bottom: 8px; }
-        .content { padding: 32px; }
-        .status-card { text-align: center; padding: 24px; background: #f8f4f0; border-radius: 12px; margin: 20px 0; }
-        .status-icon { font-size: 48px; margin-bottom: 16px; }
-        .status-text { font-size: 20px; font-weight: bold; color: ${statusColors[status] || '#2c3e50'}; margin: 12px 0; }
-        .order-number { color: #7f8c8d; font-size: 14px; margin-top: 8px; }
-        .btn { display: inline-block; padding: 12px 24px; background: #2c3e50; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px; }
-        .footer { background: #f8f4f0; padding: 20px; text-align: center; font-size: 12px; color: #7f8c8d; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <div class="logo">HAMDI SCENTS</div>
-          <h3>Order Update</h3>
-        </div>
-        <div class="content">
-          <p>Dear <strong>${customer.fullName}</strong>,</p>
-          <div class="status-card">
-            <div class="status-icon">
-              ${status === 'shipped' ? '🚚' : status === 'delivered' ? '✅' : status === 'processing' ? '⚙️' : '📋'}
-            </div>
-            <div class="status-text">${statusMessages[status] || 'Your order status has been updated'}</div>
-            <div>Current Status: <strong style="color: ${statusColors[status]};">${status.toUpperCase()}</strong></div>
-            <div class="order-number">Order #${order.orderNumber}</div>
-          </div>
-          <div style="text-align: center;">
-            <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/track-order/${order.orderNumber}" class="btn">Track Your Order</a>
-          </div>
-          <p style="margin-top: 24px;">Thank you for shopping with Hamdi Scents!</p>
-        </div>
-        <div class="footer">
-          <p>© 2024 Hamdi Scents — Premium Fragrances</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-};
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -340,23 +244,23 @@ exports.createOrder = async (req, res) => {
 
     logger.info('Order created successfully', { orderId: order._id, orderNumber: order.orderNumber });
 
-    // Send confirmation email to customer
+    // Send confirmation email to customer - USING CORRECT FORMAT
     const customerEmailHTML = getCustomerOrderEmailHTML(order, customer, totalAmount);
     
     await sendEmail({
-      to: customer.email,
-      subject: `Order Confirmed #${order.orderNumber}`,
+      email: customer.email,  // NOTE: 'email' not 'to'
+      subject: `Order Confirmation - ${order.orderNumber}`,
       html: customerEmailHTML
     }).catch(emailError => {
       logger.error('Failed to send customer email', emailError);
     });
 
-    // Send notification to admin
+    // Send notification to admin - USING CORRECT FORMAT
     const adminEmailHTML = getAdminOrderEmailHTML(order, customer, totalAmount);
     
     await sendEmail({
-      to: process.env.ADMIN_EMAIL || 'admin@hamdiscents.com',
-      subject: `New Order Alert #${order.orderNumber}`,
+      email: process.env.EMAIL_ADMIN || 'admin@hamdiscents.com',  // NOTE: 'email' not 'to'
+      subject: `New Order - ${order.orderNumber}`,
       html: adminEmailHTML
     }).catch(emailError => {
       logger.error('Failed to send admin email', emailError);
@@ -484,24 +388,10 @@ exports.updateOrderStatus = async (req, res) => {
       });
     }
 
-    const oldStatus = order.orderStatus;
     order.orderStatus = status;
     await order.save();
 
-    logger.info('Order status updated', { orderId: order._id, oldStatus, newStatus: status });
-
-    // Send status update email to customer (only for specific status changes)
-    const notifyStatuses = ['processing', 'shipped', 'delivered', 'cancelled'];
-    if (status !== oldStatus && notifyStatuses.includes(status)) {
-      const statusEmailHTML = getStatusUpdateEmailHTML(order, status, order.customer);
-      await sendEmail({
-        to: order.customer.email,
-        subject: `Order ${status === 'shipped' ? 'Shipped' : 'Update'} #${order.orderNumber}`,
-        html: statusEmailHTML
-      }).catch(emailError => {
-        logger.error('Failed to send status update email', emailError);
-      });
-    }
+    logger.info('Order status updated', { orderId: order._id, newStatus: status });
 
     res.status(200).json({
       success: true,
