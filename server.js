@@ -42,7 +42,7 @@ app.set('trust proxy', 1);
 // CORS configuration for production
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',') 
-  : ['http://localhost:5050', 'https://www.hamdiscents.com', 'http://www.hamdiscents.com','https://hamdiscents.com','http://hamdiscents.com', process.env.CLIENT_URL];
+  : ['http://localhost:5050', 'https://www.hamdiscents.com', 'http://www.hamdiscents.com','https://hamdiscents.com','http://hamdiscents.com', 'http://54.37.159.225', process.env.CLIENT_URL];
 
 app.use(cors({
   origin: function(origin, callback) {
