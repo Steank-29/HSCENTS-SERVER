@@ -45,19 +45,31 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   : ['http://localhost:5050', 'https://www.hamdiscents.com', 'http://www.hamdiscents.com','https://hamdiscents.com','http://hamdiscents.com', 'http://54.37.159.225', process.env.CLIENT_URL];
 
 app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, etc)
+  origin: function (origin, callback) {
+
+    // ✅ Allow server-to-server / curl / postman
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+
+    const allowedOrigins = [
+      "https://hamdiscents.com",
+      "https://www.hamdiscents.com",
+      "http://hamdiscents.com",
+      "http://www.hamdiscents.com"
+    ];
+
+    // Normalize origin (remove trailing slash)
+    const normalizedOrigin = origin.replace(/\/$/, "");
+
+    if (allowedOrigins.includes(normalizedOrigin)) {
+      return callback(null, true);
     }
+
+    // ❗ DO NOT THROW ERROR
+    console.warn("CORS blocked:", origin);
+
+    return callback(null, false); // <-- THIS is the fix
   },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range']
+  credentials: true
 }));
 
 // Enhanced security headers
